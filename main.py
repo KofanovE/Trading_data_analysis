@@ -3,10 +3,11 @@ import aiohttp
 import pandas as pd
 from urllib.parse import urljoin, urlencode
 
-from cred import api_key
+# from cred import api_key
+api_key = 'O5xvy4d9c74Qwzn1p8tn91dfw4dWJHzxqNhkrczH2x5PdWJPvWxSAkTKmt0ceu2j'
 
 
-async def get_binance_data(api_key, symbol, interval, limit=500, start_time=None, end_time=None):
+async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, end_time=None):
     """
     :param api_key: (str) api key of binance account;
     :param symbol: (str) trading pair. ex: 'ETHUSDT';
@@ -14,7 +15,7 @@ async def get_binance_data(api_key, symbol, interval, limit=500, start_time=None
     :param limit: (int) number of candles (default 500, max 1000);
     :param start_time: (long) time in ms;
     :param end_time: (long) time in ms;
-    :return: (pandas Data Frame) Candlestik Data
+    :return: (pandas Data Frame) CandleStick Data
     """
 
     api_key = api_key
@@ -39,10 +40,53 @@ async def get_binance_data(api_key, symbol, interval, limit=500, start_time=None
                   'asset_volume', 'number_trades', 'taker_buy_base', 'taker_buy_quote']
     return df
 
+
+
+
+async def get_order_book(api_key, symbol, limit=100, start_time=None, end_time=None):
+
+    """
+    :param api_key: (str) api key of binance account;
+    :param symbol: (str) trading pair. ex: 'ETHUSDT';
+    :param limit: (int) number of orders (max 1000);
+    :param start_time: (long) time in ms;
+    :param end_time: (long) time in ms;
+    :return: (float, float) sum quantities of bid and ask (for number of orders)
+    """
+
+    BASE_URL = 'https://api.binance.com'
+    PATH = '/api/v3/depth'
+    params = {
+        'symbol': symbol,
+        'limit': limit
+    }
+    headers = {'X-MBX-APIKEY': api_key}
+    url = urljoin(BASE_URL, PATH)
+
+    async with aiohttp.ClientSession() as session:
+
+        async with session.get(url, headers=headers, params=params) as response:
+            depth = await response.json()
+
+    df_bids = pd.DataFrame(depth['bids'], columns=['Price_bid', 'Quantity_bid'])
+    df_bids = df_bids.astype(float)
+    quantity_bid = df_bids['Quantity_bid'].sum()
+    df_asks = pd.DataFrame(depth['asks'], columns=['Price_ask', 'Quantity_ask'])
+    df_asks = df_asks.astype(float)
+    quantity_ask = df_asks['Quantity_ask'].sum()
+
+    return quantity_bid, quantity_ask
+
+
+
+
+
+
 symbol = "BTCUSDT"
 interval = '1d'
 
-data = asyncio.run(get_binance_data(api_key, symbol, interval))
-print(data)
+# data = asyncio.run(get_kline_data(api_key, symbol, interval))
+data_2 = asyncio.run(get_order_book(api_key, symbol))
+print(data_2)
 
 
