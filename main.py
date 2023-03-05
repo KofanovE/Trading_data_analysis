@@ -3,8 +3,8 @@ import aiohttp
 import pandas as pd
 from urllib.parse import urljoin, urlencode
 
-# from cred import api_key
-api_key = 'O5xvy4d9c74Qwzn1p8tn91dfw4dWJHzxqNhkrczH2x5PdWJPvWxSAkTKmt0ceu2j'
+from cred import api_key
+
 
 
 async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, end_time=None):
@@ -17,7 +17,6 @@ async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, 
     :param end_time: (long) time in ms;
     :return: (pandas Data Frame) CandleStick Data
     """
-
     api_key = api_key
     BASE_URL = 'https://api.binance.com'
     PATH = '/api/v1/klines'
