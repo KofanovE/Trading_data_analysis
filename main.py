@@ -42,12 +42,12 @@ async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, 
 
 
 
-async def get_order_book(api_key, symbol, limit=100, start_time=None, end_time=None):
+async def get_order_book(api_key, symbol, limit=5000, start_time=None, end_time=None):
 
     """
     :param api_key: (str) api key of binance account;
     :param symbol: (str) trading pair. ex: 'ETHUSDT';
-    :param limit: (int) number of orders (max 1000);
+    :param limit: (int) number of orders (max 5000);
     :param start_time: (long) time in ms;
     :param end_time: (long) time in ms;
     :return: (float, float) sum quantities of bid and ask (for number of orders)
@@ -61,6 +61,7 @@ async def get_order_book(api_key, symbol, limit=100, start_time=None, end_time=N
     }
     headers = {'X-MBX-APIKEY': api_key}
     url = urljoin(BASE_URL, PATH)
+    anomal_quantity = 5
 
     async with aiohttp.ClientSession() as session:
 
@@ -69,9 +70,15 @@ async def get_order_book(api_key, symbol, limit=100, start_time=None, end_time=N
 
     df_bids = pd.DataFrame(depth['bids'], columns=['Price_bid', 'Quantity_bid'])
     df_bids = df_bids.astype(float)
+    #median_bids = df_bids['Quantity_bid'].median()
+    anomal_bids = df_bids[df_bids['Quantity_bid'] > anomal_quantity]
+    print(anomal_bids)
     quantity_bid = df_bids['Quantity_bid'].sum()
+    
     df_asks = pd.DataFrame(depth['asks'], columns=['Price_ask', 'Quantity_ask'])
     df_asks = df_asks.astype(float)
+    anomal_asks = df_asks[df_asks['Quantity_ask'] > anomal_quantity]
+    print(anomal_asks)
     quantity_ask = df_asks['Quantity_ask'].sum()
 
     return quantity_bid, quantity_ask
@@ -82,10 +89,8 @@ async def get_order_book(api_key, symbol, limit=100, start_time=None, end_time=N
 
 
 symbol = "BTCUSDT"
-interval = '1d'
+interval = '15m'
 
-# data = asyncio.run(get_kline_data(api_key, symbol, interval))
-data_2 = asyncio.run(get_order_book(api_key, symbol))
-print(data_2)
-
-
+data = asyncio.run(get_kline_data(api_key, symbol, interval))
+#data_2 = asyncio.run(get_order_book(api_key, symbol))
+print(data)
