@@ -5,6 +5,8 @@ from urllib.parse import urljoin, urlencode
 
 from cred import api_key
 
+size_high = size_low = 3
+
 
 
 async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, end_time=None):
@@ -85,6 +87,66 @@ async def get_order_book(api_key, symbol, limit=5000, start_time=None, end_time=
 
 
 
+async def create_df_high(df):
+    """
+    """
+
+    global size_high
+    last_string = 0
+    df_high = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks', 'quantity_bid'])
+    num = 0
+
+    while num < df.shape[0]:
+        print(df.iloc[num])
+
+
+        if df_high.shape[0] == 0:
+            print(1)
+            current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1, 'quantity_bid' : 0})
+            df_high.loc[len(df_high.index)] = current_line
+            print(111)
+            print(df_high)
+        else:
+            print(2)
+            last_row_index = df_high.shape[0] - 1
+            if df_high.iloc[last_row_index]['high_price'] < df.iloc[num]['high_price']:
+                print(3)
+                print(last_row_index)
+                df_high = df_high.drop(last_row_index)
+                print(333)
+                print(df_high)
+                num -= 1
+            elif df_high.iloc[last_row_index]['high_price'] == df.iloc[num]['high_price']:
+                print(4)
+                df_high.iloc[last_row_index]['num_kicks'] += 1
+            else:
+                print(5)
+                if num >= size_high:
+                    print(6)
+                    for i in range(size_high):
+                        print(df.iloc[num]['high_price'], type(df.iloc[num]['high_price']))
+                        print(df.iloc[num - i])
+                        if float(df.iloc[num]['high_price']) < float(df.iloc[num - i]['high_price']):
+                            print(7)
+                            break
+                    print(8)
+                    current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1, 'quantity_bid' : 0})
+                    df_high.loc[len(df_high.index)] = current_line
+                    print(888)
+                    print(df_high)
+        num += 1
+
+
+
+    return df_high
+
+
+
+
+                
+    
+    
+
 
 
 
@@ -93,4 +155,6 @@ interval = '15m'
 
 data = asyncio.run(get_kline_data(api_key, symbol, interval))
 #data_2 = asyncio.run(get_order_book(api_key, symbol))
+data_3 = asyncio.run(create_df_high(data))
 print(data)
+print(data_3)
