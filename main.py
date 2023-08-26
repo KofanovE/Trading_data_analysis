@@ -17,15 +17,18 @@ async def get_kline_data(api_key, symbol, interval, limit, futures=False, start_
     :param limit: (int) number of candles (default 500, max 1000);
     :param start_time: (long) time in ms;
     :param end_time: (long) time in ms;
-    :return: (pandas Data Frame) CandleStick Data
+    :return: (pandas Data Frame) CandleStick Data;
     """
     api_key = api_key
-    if futures:
+    
+    if futures:        
         BASE_URL = 'https://fapi.binance.com'
         PATH = '/fapi/v1/klines'
-    else:
+        
+    else:        
         BASE_URL = 'https://api.binance.com'
         PATH = '/api/v1/klines'
+        
     params = {
         'symbol': symbol,
         'interval': interval,
@@ -56,11 +59,13 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
     :param limit: (int) number of orders (max 5000);
     :param start_time: (long) time in ms;
     :param end_time: (long) time in ms;
-    :return: (float, float) sum quantities of bid and ask (for number of orders)
+    :return: (float, float) sum quantities of bid and ask (for number of orders);
     """
+    
     if futures:
         BASE_URL = 'https://fapi.binance.com'
         PATH = '/fapi/v1/depth'
+        
     else:
         BASE_URL = 'https://api.binance.com'
         PATH = '/api/v3/depth'
@@ -99,29 +104,28 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
 
 async def create_df_high(df):
     """
+    :param df: (pandas Data Frame) CandleStick Data;
+    :return df_high: (pandas Data Frame) CandleStick Highs Data;
+
     """
 
     global size_high
     last_string = 0
-    df_high = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks', 'quantity_bid'])
+    df_high = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks'])
     num = 0
 
-    while num < df.shape[0]:
-
-        not_high = False
-
-
-
+    while num < df.shape[0]:        
+        not_high = False        
         if df_high.shape[0] == 0:
-            current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1, 'quantity_bid' : 0})
+            current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1})
             df_high.loc[len(df_high.index)] = current_line
 
         else:
-
-            last_row_index = df_high.shape[0] - 1
+            last_row_index = df_high.shape[0] - 1           
             if df_high.iloc[last_row_index]['high_price'] < df.iloc[num]['high_price']:
                 df_high = df_high.drop(last_row_index)
                 num -= 1
+                
             elif df_high.iloc[last_row_index]['high_price'] == df.iloc[num]['high_price']:
                 num_kick = df_high.loc[last_row_index, 'num_kicks'] + 1
                 df_high.loc[last_row_index, 'num_kicks'] = num_kick
@@ -134,12 +138,10 @@ async def create_df_high(df):
                             not_high = True
                             break
                     if not not_high:
-                        current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1, 'quantity_bid' : 0})
+                        current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1})
                         df_high.loc[len(df_high.index)] = current_line
         num += 1
     
-
-
     df_high['high_price'] = df_high['high_price'].astype(float)
     return df_high
 
@@ -172,31 +174,6 @@ print(merged_df)
 
 
 
-"""
-
-import pandas as pd
-
-# Пример исходных данных
-data1 = {'ID': [1, 2, 3],
-         'Value1_df1': [10, 20, 30]}
-data2 = {'ID': [2, 3, 1],
-         'Value2_df2': [200, 300, 100]}
-
-df1 = pd.DataFrame(data1)
-df2 = pd.DataFrame(data2)
-
-# Слияние (merge) DataFrame на основе столбца 'ID'
-merged_df = pd.merge(df1, df2, on='ID')
-
-# Копирование значений из 'Value2_df2' в 'Value1_df1'
-merged_df['Value1_df1'] = merged_df['Value2_df2']
-
-# Удаление ненужных столбцов
-merged_df = merged_df.drop(['Value2_df2'], axis=1)
-
-print(merged_df)
-
-"""
 
 
 
