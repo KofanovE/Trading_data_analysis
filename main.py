@@ -9,7 +9,7 @@ size_high = size_low = 3
 
 
 
-async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, end_time=None):
+async def get_kline_data(api_key, symbol, interval, limit, futures=False, start_time=None, end_time=None):
     """
     :param api_key: (str) api key of binance account;
     :param symbol: (str) trading pair. ex: 'ETHUSDT';
@@ -20,8 +20,12 @@ async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, 
     :return: (pandas Data Frame) CandleStick Data
     """
     api_key = api_key
-    BASE_URL = 'https://api.binance.com'
-    PATH = '/api/v1/klines'
+    if futures:
+        BASE_URL = 'https://fapi.binance.com'
+        PATH = '/fapi/v1/klines'
+    else:
+        BASE_URL = 'https://api.binance.com'
+        PATH = '/api/v1/klines'
     params = {
         'symbol': symbol,
         'interval': interval,
@@ -44,7 +48,7 @@ async def get_kline_data(api_key, symbol, interval, limit=500, start_time=None, 
 
 
 
-async def get_order_book(api_key, symbol, limit=5000, start_time=None, end_time=None):
+async def get_order_book(api_key, symbol, limit, futures=False, start_time=None, end_time=None):
 
     """
     :param api_key: (str) api key of binance account;
@@ -54,36 +58,42 @@ async def get_order_book(api_key, symbol, limit=5000, start_time=None, end_time=
     :param end_time: (long) time in ms;
     :return: (float, float) sum quantities of bid and ask (for number of orders)
     """
-
-    BASE_URL = 'https://api.binance.com'
-    PATH = '/api/v3/depth'
+    if futures:
+        BASE_URL = 'https://fapi.binance.com'
+        PATH = '/fapi/v1/depth'
+    else:
+        BASE_URL = 'https://api.binance.com'
+        PATH = '/api/v3/depth'
+        
     params = {
         'symbol': symbol,
         'limit': limit
     }
     headers = {'X-MBX-APIKEY': api_key}
     url = urljoin(BASE_URL, PATH)
-    anomal_quantity = 5
+    anomal_quantity = 10
 
     async with aiohttp.ClientSession() as session:
 
         async with session.get(url, headers=headers, params=params) as response:
             depth = await response.json()
 
-    df_bids = pd.DataFrame(depth['bids'], columns=['Price_bid', 'Quantity_bid'])
+    df_bids = pd.DataFrame(depth['bids'], columns=['high_price', 'quantity_bid'])
     df_bids = df_bids.astype(float)
-    #median_bids = df_bids['Quantity_bid'].median()
-    anomal_bids = df_bids[df_bids['Quantity_bid'] > anomal_quantity]
-    print(anomal_bids)
-    quantity_bid = df_bids['Quantity_bid'].sum()
+    anomal_bids = df_bids[df_bids['quantity_bid'] > anomal_quantity]
+    #print(anomal_bids)
+    quantity_bid = df_bids['quantity_bid'].sum()
     
-    df_asks = pd.DataFrame(depth['asks'], columns=['Price_ask', 'Quantity_ask'])
+    df_asks = pd.DataFrame(depth['asks'], columns=['high_price', 'quantity_ask'])
     df_asks = df_asks.astype(float)
-    anomal_asks = df_asks[df_asks['Quantity_ask'] > anomal_quantity]
+    anomal_asks = df_asks[df_asks['quantity_ask'] > anomal_quantity]
+    #print(anomal_asks)
+    quantity_ask = df_asks['quantity_ask'].sum()
+    print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
     print(anomal_asks)
-    quantity_ask = df_asks['Quantity_ask'].sum()
 
-    return quantity_bid, quantity_ask
+
+    return df_asks
 
 
 
@@ -97,47 +107,40 @@ async def create_df_high(df):
     num = 0
 
     while num < df.shape[0]:
-        print(df.iloc[num])
+
+        not_high = False
+
 
 
         if df_high.shape[0] == 0:
-            print(1)
             current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1, 'quantity_bid' : 0})
             df_high.loc[len(df_high.index)] = current_line
-            print(111)
-            print(df_high)
+
         else:
-            print(2)
+
             last_row_index = df_high.shape[0] - 1
             if df_high.iloc[last_row_index]['high_price'] < df.iloc[num]['high_price']:
-                print(3)
-                print(last_row_index)
                 df_high = df_high.drop(last_row_index)
-                print(333)
-                print(df_high)
                 num -= 1
             elif df_high.iloc[last_row_index]['high_price'] == df.iloc[num]['high_price']:
-                print(4)
-                df_high.iloc[last_row_index]['num_kicks'] += 1
+                num_kick = df_high.loc[last_row_index, 'num_kicks'] + 1
+                df_high.loc[last_row_index, 'num_kicks'] = num_kick
+                print(df_high.loc[last_row_index, 'high_price'], df_high.loc[last_row_index, 'num_kicks'])
+                
             else:
-                print(5)
                 if num >= size_high:
-                    print(6)
                     for i in range(size_high):
-                        print(df.iloc[num]['high_price'], type(df.iloc[num]['high_price']))
-                        print(df.iloc[num - i])
                         if float(df.iloc[num]['high_price']) < float(df.iloc[num - i]['high_price']):
-                            print(7)
+                            not_high = True
                             break
-                    print(8)
-                    current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1, 'quantity_bid' : 0})
-                    df_high.loc[len(df_high.index)] = current_line
-                    print(888)
-                    print(df_high)
+                    if not not_high:
+                        current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1, 'quantity_bid' : 0})
+                        df_high.loc[len(df_high.index)] = current_line
         num += 1
+    
 
 
-
+    df_high['high_price'] = df_high['high_price'].astype(float)
     return df_high
 
 
@@ -153,8 +156,47 @@ async def create_df_high(df):
 symbol = "BTCUSDT"
 interval = '15m'
 
-data = asyncio.run(get_kline_data(api_key, symbol, interval))
-#data_2 = asyncio.run(get_order_book(api_key, symbol))
+data = asyncio.run(get_kline_data(api_key, symbol, interval, 500, True))
+data_2 = asyncio.run(get_order_book(api_key, symbol, 1000, True))
+print(type(data_2))
 data_3 = asyncio.run(create_df_high(data))
-print(data)
+print(type(data_3))
+
+merged_df = pd.merge(data_3, data_2, on='high_price')
+print('\\\\\\\\\\\\\\\\\\\\\\\\\\')
+print(data_2)
+print('\\\\\\\\\\\\\\\\\\\\\\\\\\')
 print(data_3)
+print('\\\\\\\\\\\\\\\\\\\\\\\\\\')
+print(merged_df)
+
+
+
+"""
+
+import pandas as pd
+
+# Пример исходных данных
+data1 = {'ID': [1, 2, 3],
+         'Value1_df1': [10, 20, 30]}
+data2 = {'ID': [2, 3, 1],
+         'Value2_df2': [200, 300, 100]}
+
+df1 = pd.DataFrame(data1)
+df2 = pd.DataFrame(data2)
+
+# Слияние (merge) DataFrame на основе столбца 'ID'
+merged_df = pd.merge(df1, df2, on='ID')
+
+# Копирование значений из 'Value2_df2' в 'Value1_df1'
+merged_df['Value1_df1'] = merged_df['Value2_df2']
+
+# Удаление ненужных столбцов
+merged_df = merged_df.drop(['Value2_df2'], axis=1)
+
+print(merged_df)
+
+"""
+
+
+
