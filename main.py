@@ -152,7 +152,7 @@ async def create_df_high(df):
 async def create_df_low(df):
     """
     :param df: (pandas Data Frame) CandleStick Data;
-    :return df_high: (pandas Data Frame) CandleStick Highs Data;
+    :return df_low: (pandas Data Frame) CandleStick Lows Data;
 
     """
 
