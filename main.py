@@ -79,7 +79,6 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
     anomal_quantity = 10
 
     async with aiohttp.ClientSession() as session:
-
         async with session.get(url, headers=headers, params=params) as response:
             depth = await response.json()
 
