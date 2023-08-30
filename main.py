@@ -1,6 +1,7 @@
 import asyncio
 import aiohttp
 import pandas as pd
+import time
 from urllib.parse import urljoin, urlencode
 
 from cred import api_key
@@ -87,16 +88,16 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
     anomal_bids = df_bids[df_bids['quantity_bid'] > anomal_quantity]
     #print(anomal_bids)
     quantity_bid = df_bids['quantity_bid'].sum()
-    print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
-    print(anomal_bids)
+    #print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
+    #print(anomal_bids)
     
     df_asks = pd.DataFrame(depth['asks'], columns=['high_price', 'quantity_ask'])
     df_asks = df_asks.astype(float)
     anomal_asks = df_asks[df_asks['quantity_ask'] > anomal_quantity]
     #print(anomal_asks)
     quantity_ask = df_asks['quantity_ask'].sum()
-    print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
-    print(anomal_asks)
+    #print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
+    #print(anomal_asks)
 
 
     return df_asks, df_bids
@@ -130,7 +131,7 @@ async def create_df_high(df):
             elif df_high.iloc[last_row_index]['high_price'] == df.iloc[num]['high_price']:
                 num_kick = df_high.loc[last_row_index, 'num_kicks'] + 1
                 df_high.loc[last_row_index, 'num_kicks'] = num_kick
-                print(df_high.loc[last_row_index, 'high_price'], df_high.loc[last_row_index, 'num_kicks'])
+                #print(df_high.loc[last_row_index, 'high_price'], df_high.loc[last_row_index, 'num_kicks'])
                 
             else:
                 if num >= size_high:
@@ -175,7 +176,7 @@ async def create_df_low(df):
             elif df_low.iloc[last_row_index]['low_price'] == df.iloc[num]['low_price']:
                 num_kick = df_low.loc[last_row_index, 'num_kicks'] + 1
                 df_low.loc[last_row_index, 'num_kicks'] = num_kick
-                print(df_low.loc[last_row_index, 'low_price'], df_low.loc[last_row_index, 'num_kicks'])
+                #print(df_low.loc[last_row_index, 'low_price'], df_low.loc[last_row_index, 'num_kicks'])
                 
             else:
                 if num >= size_low:
@@ -202,19 +203,43 @@ async def create_df_low(df):
 symbol = "BTCUSDT"
 interval = '15m'
 
-data = asyncio.run(get_kline_data(api_key, symbol, interval, 500, True))
-data_asks, data_bids = asyncio.run(get_order_book(api_key, symbol, 1000, True))
-print(type(data_bids))
-data_3 = asyncio.run(create_df_low(data))
-print(type(data_3))
+df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 500, True))
+time.sleep(1)
+df_futures_asks, df_futures_bids = asyncio.run(get_order_book(api_key, symbol, 1000, True))
+time.sleep(1)
+df_futures_lows = asyncio.run(create_df_low(df_futures_klines))
+time.sleep(1)
+df_futures_highs = asyncio.run(create_df_high(df_futures_klines))
 
-merged_df = pd.merge(data_3, data_bids, on='low_price')
-print('\\\\\\\\\\\\\\\\\\\\\\\\\\')
-print(data_bids)
-print('\\\\\\\\\\\\\\\\\\\\\\\\\\')
-print(data_3)
-print('\\\\\\\\\\\\\\\\\\\\\\\\\\')
-print(merged_df)
+futures_lows = pd.merge(df_futures_lows, df_futures_bids, on='low_price')
+futures_highs = pd.merge(df_futures_highs, df_futures_asks, on='high_price')
+
+time.sleep(1)
+df_spot_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 500))
+time.sleep(1)
+df_spot_asks, df_spot_bids = asyncio.run(get_order_book(api_key, symbol, 1000))
+time.sleep(1)
+df_spot_highs = asyncio.run(create_df_high(df_spot_klines))
+time.sleep(1)
+df_spot_lows = asyncio.run(create_df_low(df_spot_klines))
+
+spot_highs = pd.merge(df_spot_highs, df_futures_asks, on='high_price')
+spot_lows = pd.merge(df_spot_lows, df_spot_bids, on='low_price')
+
+
+
+
+
+print('Fytyre highs')
+print(futures_highs)
+print('Future lows')
+print(futures_lows)
+print('Spot highs')
+print(spot_highs)
+print('Spot lows')
+print(spot_lows)
+
+
 
 
 
