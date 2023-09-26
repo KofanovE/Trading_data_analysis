@@ -99,7 +99,9 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
     #print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
     #print(anomal_asks)
 
-
+    print(df_asks)
+    print('\\\\\\')
+    print(df_bids)
     return df_asks, df_bids
 
 
@@ -115,6 +117,7 @@ async def create_df_high(df):
     last_string = 0
     df_high = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks'])
     num = 0
+    delta = 2.0
 
     while num < df.shape[0]:        
         not_high = False        
@@ -123,12 +126,12 @@ async def create_df_high(df):
             df_high.loc[len(df_high.index)] = current_line
 
         else:
-            last_row_index = df_high.shape[0] - 1           
-            if df_high.iloc[last_row_index]['high_price'] < df.iloc[num]['high_price']:
+            last_row_index = df_high.shape[0] - 1
+            if float(df_high.iloc[last_row_index]['high_price']) + delta < float(df.iloc[num]['high_price']):
                 df_high = df_high.drop(last_row_index)
                 num -= 1
                 
-            elif df_high.iloc[last_row_index]['high_price'] == df.iloc[num]['high_price']:
+            elif float(df_high.iloc[last_row_index]['high_price']) - delta < float(df.iloc[num]['high_price']) :
                 num_kick = df_high.loc[last_row_index, 'num_kicks'] + 1
                 df_high.loc[last_row_index, 'num_kicks'] = num_kick
                 #print(df_high.loc[last_row_index, 'high_price'], df_high.loc[last_row_index, 'num_kicks'])
@@ -145,6 +148,7 @@ async def create_df_high(df):
         num += 1
     
     df_high['high_price'] = df_high['high_price'].astype(float)
+    print(df_high)
     return df_high
 
 
@@ -190,6 +194,7 @@ async def create_df_low(df):
         num += 1
     
     df_low['low_price'] = df_low['low_price'].astype(float)
+    print(df_low)
     return df_low
 
 
@@ -201,9 +206,9 @@ async def create_df_low(df):
 
 
 symbol = "BTCUSDT"
-interval = '15m'
+interval = '30m'
 
-df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 500, True))
+df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True))
 time.sleep(1)
 df_futures_asks, df_futures_bids = asyncio.run(get_order_book(api_key, symbol, 1000, True))
 time.sleep(1)
@@ -214,8 +219,9 @@ df_futures_highs = asyncio.run(create_df_high(df_futures_klines))
 futures_lows = pd.merge(df_futures_lows, df_futures_bids, on='low_price')
 futures_highs = pd.merge(df_futures_highs, df_futures_asks, on='high_price')
 
+"""
 time.sleep(1)
-df_spot_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 500))
+df_spot_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000))
 time.sleep(1)
 df_spot_asks, df_spot_bids = asyncio.run(get_order_book(api_key, symbol, 1000))
 time.sleep(1)
@@ -226,18 +232,20 @@ df_spot_lows = asyncio.run(create_df_low(df_spot_klines))
 spot_highs = pd.merge(df_spot_highs, df_futures_asks, on='high_price')
 spot_lows = pd.merge(df_spot_lows, df_spot_bids, on='low_price')
 
-
-
-
-
-print('Fytyre highs')
-print(futures_highs)
-print('Future lows')
-print(futures_lows)
 print('Spot highs')
 print(spot_highs)
 print('Spot lows')
 print(spot_lows)
+
+"""
+
+
+
+print('Future highs')
+print(futures_highs)
+print('Future lows')
+print(futures_lows)
+
 
 
 
