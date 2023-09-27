@@ -2,10 +2,11 @@ import asyncio
 import aiohttp
 import pandas as pd
 import time
+import os
 from urllib.parse import urljoin, urlencode
 from datetime import datetime
 
-from cred import api_key
+from cred import api_key, way_to_dir
 
 size_high = size_low = 3
 
@@ -109,7 +110,7 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
 
 
 
-async def create_df_high(df):
+async def create_df_high(df_new, df_old):
     """
     :param df: (pandas Data Frame) CandleStick Data;
     :return df_high: (pandas Data Frame) CandleStick Highs Data;
@@ -118,41 +119,42 @@ async def create_df_high(df):
 
     global size_high
     last_string = 0
-    df_high = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks'])
+    
     num = 0
+        
     delta = 2.0
 
-    while num < df.shape[0]:        
+    while num < df_new.shape[0]:        
         not_high = False        
-        if df_high.shape[0] == 0:
-            current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1})
-            df_high.loc[len(df_high.index)] = current_line
+        if df_old.shape[0] == 0:
+            current_line = pd.Series({'open_time': df_new.iloc[num]['open_time'], 'high_price' : df_new.iloc[num]['high_price'], 'num_kicks' : 1})
+            df_old.loc[len(df_old.index)] = current_line
 
         else:
-            last_row_index = df_high.shape[0] - 1
-            if float(df_high.iloc[last_row_index]['high_price']) + delta < float(df.iloc[num]['high_price']):
-                df_high = df_high.drop(last_row_index)
+            last_row_index = df_old.shape[0] - 1
+            if float(df_old.iloc[last_row_index]['high_price']) + delta < float(df_new.iloc[num]['high_price']):
+                df_old = df_old.drop(last_row_index)
                 num -= 1
                 
-            elif float(df_high.iloc[last_row_index]['high_price']) - delta < float(df.iloc[num]['high_price']) :
-                num_kick = df_high.loc[last_row_index, 'num_kicks'] + 1
-                df_high.loc[last_row_index, 'num_kicks'] = num_kick
+            elif float(df_old.iloc[last_row_index]['high_price']) - delta < float(df_new.iloc[num]['high_price']) :
+                num_kick = df_old.loc[last_row_index, 'num_kicks'] + 1
+                df_old.loc[last_row_index, 'num_kicks'] = num_kick
                 #print(df_high.loc[last_row_index, 'high_price'], df_high.loc[last_row_index, 'num_kicks'])
                 
             else:
                 if num >= size_high:
                     for i in range(size_high):
-                        if float(df.iloc[num]['high_price']) < float(df.iloc[num - i]['high_price']):
+                        if float(df_new.iloc[num]['high_price']) < float(df_new.iloc[num - i]['high_price']):
                             not_high = True
                             break
                     if not not_high:
-                        current_line = pd.Series({'open_time': df.iloc[num]['open_time'], 'high_price' : df.iloc[num]['high_price'], 'num_kicks' : 1})
-                        df_high.loc[len(df_high.index)] = current_line
+                        current_line = pd.Series({'open_time': df_new.iloc[num]['open_time'], 'high_price' : df_new.iloc[num]['high_price'], 'num_kicks' : 1})
+                        df_old.loc[len(df_old.index)] = current_line
         num += 1
     
-    df_high['high_price'] = df_high['high_price'].astype(float)
-    print(df_high)
-    return df_high
+    df_old['high_price'] = df_old['high_price'].astype(float)
+    #print(df_old)
+    return df_old
 
 
 
@@ -210,11 +212,12 @@ async def create_df_low(df):
 
 symbol = "BTCUSDT"
 interval = '30m'
+name_csv = 'F_BTCUSDT.csv'
 
 if interval == '30m':
     add_time_ms = 1800000000
     
-date_time = datetime(2021, 6, 1, 0, 0, 0)
+date_time = datetime(2022, 6, 1, 0, 0, 0)
 start_time = int(date_time.timestamp()) * 1000
 
 current_datetime = datetime.now()
@@ -224,8 +227,21 @@ stop_time = start_time + add_time_ms
 
 df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
 time.sleep(1)
-df_futures_highs = asyncio.run(create_df_high(df_futures_klines))
 
+
+
+
+
+full_way = os.path.join(way_to_dir, name_csv)
+if not os.path.isfile(full_way):
+    df_old = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks'])
+    df_old.to_csv(full_way, index=False)
+else:
+    df_old = pd.read_csv(full_way)
+    
+
+df_futures_highs = asyncio.run(create_df_high(df_futures_klines, df_old))
+df_futures_highs.to_csv(full_way, index=False)
 """
 df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True))
 time.sleep(1)
