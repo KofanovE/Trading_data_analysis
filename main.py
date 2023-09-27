@@ -3,6 +3,7 @@ import aiohttp
 import pandas as pd
 import time
 from urllib.parse import urljoin, urlencode
+from datetime import datetime
 
 from cred import api_key
 
@@ -10,7 +11,7 @@ size_high = size_low = 3
 
 
 
-async def get_kline_data(api_key, symbol, interval, limit, futures=False, start_time=None, end_time=None):
+async def get_kline_data(api_key, symbol, interval, limit=None, futures=False, start_time=None, end_time=None):
     """
     :param api_key: (str) api key of binance account;
     :param symbol: (str) trading pair. ex: 'ETHUSDT';
@@ -33,7 +34,9 @@ async def get_kline_data(api_key, symbol, interval, limit, futures=False, start_
     params = {
         'symbol': symbol,
         'interval': interval,
-        'limit': limit
+        'limit': limit,
+        'startTime': start_time,
+        'endTime' : end_time
     }
     headers = {'X-MBX-APIKEY': api_key}
     url = urljoin(BASE_URL, PATH)
@@ -208,6 +211,22 @@ async def create_df_low(df):
 symbol = "BTCUSDT"
 interval = '30m'
 
+if interval == '30m':
+    add_time_ms = 1800000000
+    
+date_time = datetime(2021, 6, 1, 0, 0, 0)
+start_time = int(date_time.timestamp()) * 1000
+
+current_datetime = datetime.now()
+current_timestamp = int(current_datetime.timestamp()) * 1000
+
+stop_time = start_time + add_time_ms
+
+df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
+time.sleep(1)
+df_futures_highs = asyncio.run(create_df_high(df_futures_klines))
+
+"""
 df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True))
 time.sleep(1)
 df_futures_asks, df_futures_bids = asyncio.run(get_order_book(api_key, symbol, 1000, True))
@@ -218,6 +237,13 @@ df_futures_highs = asyncio.run(create_df_high(df_futures_klines))
 
 futures_lows = pd.merge(df_futures_lows, df_futures_bids, on='low_price')
 futures_highs = pd.merge(df_futures_highs, df_futures_asks, on='high_price')
+
+print('Future highs')
+print(futures_highs)
+print('Future lows')
+print(futures_lows)
+
+"""
 
 """
 time.sleep(1)
@@ -241,10 +267,6 @@ print(spot_lows)
 
 
 
-print('Future highs')
-print(futures_highs)
-print('Future lows')
-print(futures_lows)
 
 
 
