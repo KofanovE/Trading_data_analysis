@@ -49,9 +49,10 @@ async def get_kline_data(api_key, symbol, interval, limit=None, futures=False, s
             klines = await response.json()
 
     df = pd.DataFrame(klines)
-    df.drop(columns=df.columns[-1], inplace=True)
-    df.columns = ['open_time', 'open_price', 'high_price', 'low_price', 'close_prise', 'volume', 'close_time',
-                  'asset_volume', 'number_trades', 'taker_buy_base', 'taker_buy_quote']
+    if not df.empty and len(df.columns) > 0:
+        df.drop(columns=df.columns[-1], inplace=True)
+        df.columns = ['open_time', 'open_price', 'high_price', 'low_price', 'close_prise', 'volume', 'close_time',
+                      'asset_volume', 'number_trades', 'taker_buy_base', 'taker_buy_quote']
     return df
 
 
@@ -204,24 +205,32 @@ async def create_df_low(df):
     return df_low
 
 
-                
+
+
+def read_start_time(filename):
+    with open(filename, 'r') as file:
+        constant = file.read().strip()
+    return constant                
     
-    
+
+def write_start_time(filename, constant):
+    with open(filename, 'w') as file:
+        file.write(str(constant))    
 
 
 
 
 symbol = "BTCUSDT"
 interval = '30m'
-name_csv = 'F_BTCUSDT.csv'
+name_csv = 'F_BTCUSDT_H.csv'
+start_time_file = 'START_TIME.txt'
 full_way = os.path.join(way_to_dir, name_csv)
 numb_iter = 0
 
 if interval == '30m':
     add_time_ms = 1800000000
     
-date_time = datetime(2023, 6, 1, 0, 0, 0)
-start_time = int(date_time.timestamp()) * 1000
+
 
 current_datetime = datetime.now()
 current_timestamp = int(current_datetime.timestamp()) * 1000
@@ -230,7 +239,10 @@ current_timestamp = int(current_datetime.timestamp()) * 1000
 if not os.path.isfile(full_way):
     df_old = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks'])
     df_old.to_csv(full_way, index=False)
-    
+    date_time = datetime(2023, 6, 1, 0, 0, 0)
+    start_time = int(date_time.timestamp()) * 1000
+else:
+    start_time = int(read_start_time(os.path.join(way_to_dir, start_time_file)))
 
 
 while current_timestamp > start_time + add_time_ms:
@@ -252,6 +264,7 @@ df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, 
 time.sleep(1)        
 df_futures_highs = asyncio.run(create_df_high(df_futures_klines, df_old))
 df_futures_highs.to_csv(full_way, index=False)
+write_start_time(os.path.join(way_to_dir, start_time_file), stop_time)
 
 
 
