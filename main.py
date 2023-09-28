@@ -53,7 +53,6 @@ async def get_kline_data(api_key, symbol, interval, limit=None, futures=False, s
         df.drop(columns=df.columns[-1], inplace=True)
         df.columns = ['open_time', 'open_price', 'high_price', 'low_price', 'close_prise', 'volume', 'close_time',
                       'asset_volume', 'number_trades', 'taker_buy_base', 'taker_buy_quote']
-    print(df)
     return df
 
 
@@ -209,65 +208,74 @@ async def create_df_low(df):
 
 
 def read_start_time(filename):
+    """
+    The function for reading the time of the next iteration
+    """
     with open(filename, 'r') as file:
         constant = file.read().strip()
     return constant                
     
 
 def write_start_time(filename, constant):
+    """
+    The function for writing the  time of the next iteration
+    """
     with open(filename, 'w') as file:
         file.write(str(constant))    
 
 
 
 
-symbol = "BTCUSDT"
+symbol = "BTCUSDT"    # coin's name of current iteration
 interval = '30m'
-name_csv = 'F_BTCUSDT_H.csv'
+name_csv = 'F_BTCUSDT_H.csv'    # name of file with current coin's highs
 start_time_file = 'START_TIME.txt'
-full_way = os.path.join(way_to_dir, name_csv)
-numb_iter = 0
+full_way = os.path.join(way_to_dir, name_csv)    
+numb_iter = 0    # number of current df. only indicator
 
 if interval == '30m':
-    add_time_ms = 1800000000
+    add_time_ms = 1800000000    # digit needed for is it the last df before the now time
     
 
 
 current_datetime = datetime.now()
-current_timestamp = int(current_datetime.timestamp()) * 1000
+current_timestamp = int(current_datetime.timestamp()) * 1000    # now time
 
 
 if not os.path.isfile(full_way):
+    # if there isn't csv file with high/low -> creating empty df and write it in csv file
     df_old = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks'])
     df_old.to_csv(full_way, index=False)
-    date_time = datetime(2023, 6, 1, 0, 0, 0)
+    date_time = datetime(2023, 6, 1, 0, 0, 0)    # start time of getting highs/lows
     start_time = int(date_time.timestamp()) * 1000
 else:
-    start_time = int(read_start_time(os.path.join(way_to_dir, start_time_file)))
+    # if there is the csv file in the dir, start time is reading from the file start_time_file
+    start_time = int(read_start_time(os.path.join(way_to_dir, start_time_file))) 
 
 
 while current_timestamp > start_time + add_time_ms:
-    numb_iter += 1
-    print(numb_iter)
-    df_old = pd.read_csv(full_way)
-    stop_time = start_time + add_time_ms
-    df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
+    # while the start time of df + summary time of this df < current time -> doing iterations below
+    numb_iter += 1    # only indicator increment
+    print(numb_iter)    # only indication
+    df_old = pd.read_csv(full_way)    # reading df with old highs
+    stop_time = start_time + add_time_ms    
+    df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))    # getting new df with new klines (with new start and end interval)
     time.sleep(1)        
-    df_futures_highs = asyncio.run(create_df_high(df_futures_klines, df_old))
+    df_futures_highs = asyncio.run(create_df_high(df_futures_klines, df_old))    # getting new highns and writing them into the csv file
     df_futures_highs.to_csv(full_way, index=False)
-    start_time = stop_time
+    start_time = stop_time    # getting the new start time for the next iteration
 
 numb_iter += 1
 print(numb_iter)  
-start_time = start_time - 1800000
+start_time = start_time - 1800000    # changing start_time for the getting at least one kline in next df
   
 df_old = pd.read_csv(full_way)
-stop_time = current_timestamp
+stop_time = current_timestamp    # in the last iteration stop_time is  now time 
 df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
 time.sleep(1)        
 df_futures_highs = asyncio.run(create_df_high(df_futures_klines, df_old))
 df_futures_highs.to_csv(full_way, index=False)
-write_start_time(os.path.join(way_to_dir, start_time_file), stop_time)
+write_start_time(os.path.join(way_to_dir, start_time_file), stop_time)    # writting the time of the last iteration in txt file
 
 
 
@@ -276,44 +284,6 @@ write_start_time(os.path.join(way_to_dir, start_time_file), stop_time)
 
 
 
-"""
-df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True))
-time.sleep(1)
-df_futures_asks, df_futures_bids = asyncio.run(get_order_book(api_key, symbol, 1000, True))
-time.sleep(1)
-df_futures_lows = asyncio.run(create_df_low(df_futures_klines))
-time.sleep(1)
-df_futures_highs = asyncio.run(create_df_high(df_futures_klines))
-
-futures_lows = pd.merge(df_futures_lows, df_futures_bids, on='low_price')
-futures_highs = pd.merge(df_futures_highs, df_futures_asks, on='high_price')
-
-print('Future highs')
-print(futures_highs)
-print('Future lows')
-print(futures_lows)
-
-"""
-
-"""
-time.sleep(1)
-df_spot_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000))
-time.sleep(1)
-df_spot_asks, df_spot_bids = asyncio.run(get_order_book(api_key, symbol, 1000))
-time.sleep(1)
-df_spot_highs = asyncio.run(create_df_high(df_spot_klines))
-time.sleep(1)
-df_spot_lows = asyncio.run(create_df_low(df_spot_klines))
-
-spot_highs = pd.merge(df_spot_highs, df_futures_asks, on='high_price')
-spot_lows = pd.merge(df_spot_lows, df_spot_bids, on='low_price')
-
-print('Spot highs')
-print(spot_highs)
-print('Spot lows')
-print(spot_lows)
-
-"""
 
 
 
