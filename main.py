@@ -53,6 +53,7 @@ async def get_kline_data(api_key, symbol, interval, limit=None, futures=False, s
         df.drop(columns=df.columns[-1], inplace=True)
         df.columns = ['open_time', 'open_price', 'high_price', 'low_price', 'close_prise', 'volume', 'close_time',
                       'asset_volume', 'number_trades', 'taker_buy_base', 'taker_buy_quote']
+    print(df)
     return df
 
 
@@ -257,7 +258,9 @@ while current_timestamp > start_time + add_time_ms:
     start_time = stop_time
 
 numb_iter += 1
-print(numb_iter)    
+print(numb_iter)  
+start_time = start_time - 1800000
+  
 df_old = pd.read_csv(full_way)
 stop_time = current_timestamp
 df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
