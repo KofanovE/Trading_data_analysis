@@ -3,6 +3,7 @@ import aiohttp
 import pandas as pd
 import time
 import os
+import csv
 from urllib.parse import urljoin, urlencode
 from datetime import datetime
 
@@ -213,35 +214,52 @@ async def create_df_low(df):
 symbol = "BTCUSDT"
 interval = '30m'
 name_csv = 'F_BTCUSDT.csv'
+full_way = os.path.join(way_to_dir, name_csv)
+numb_iter = 0
 
 if interval == '30m':
     add_time_ms = 1800000000
     
-date_time = datetime(2022, 6, 1, 0, 0, 0)
+date_time = datetime(2023, 6, 1, 0, 0, 0)
 start_time = int(date_time.timestamp()) * 1000
 
 current_datetime = datetime.now()
 current_timestamp = int(current_datetime.timestamp()) * 1000
 
-stop_time = start_time + add_time_ms
 
-df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
-time.sleep(1)
-
-
-
-
-
-full_way = os.path.join(way_to_dir, name_csv)
 if not os.path.isfile(full_way):
     df_old = pd.DataFrame(columns=['open_time', 'high_price', 'num_kicks'])
     df_old.to_csv(full_way, index=False)
-else:
-    df_old = pd.read_csv(full_way)
     
 
+
+while current_timestamp > start_time + add_time_ms:
+    numb_iter += 1
+    print(numb_iter)
+    df_old = pd.read_csv(full_way)
+    stop_time = start_time + add_time_ms
+    df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
+    time.sleep(1)        
+    df_futures_highs = asyncio.run(create_df_high(df_futures_klines, df_old))
+    df_futures_highs.to_csv(full_way, index=False)
+    start_time = stop_time
+
+numb_iter += 1
+print(numb_iter)    
+df_old = pd.read_csv(full_way)
+stop_time = current_timestamp
+df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True, start_time, stop_time))
+time.sleep(1)        
 df_futures_highs = asyncio.run(create_df_high(df_futures_klines, df_old))
 df_futures_highs.to_csv(full_way, index=False)
+
+
+
+
+    
+
+
+
 """
 df_futures_klines = asyncio.run(get_kline_data(api_key, symbol, interval, 1000, True))
 time.sleep(1)
