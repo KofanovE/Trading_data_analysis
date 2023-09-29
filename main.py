@@ -100,13 +100,13 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
     df_asks = pd.DataFrame(depth['asks'], columns=['high_price', 'quantity_ask'])
     df_asks = df_asks.astype(float)
     anomal_asks = df_asks[df_asks['quantity_ask'] > anomal_quantity]
-    #print(anomal_asks)
+    print(anomal_asks)
     quantity_ask = df_asks['quantity_ask'].sum()
-    #print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
-    #print(anomal_asks)
+    print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
+
 
     print(df_asks)
-    print('\\\\\\')
+    print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
     print(df_bids)
     return df_asks, df_bids
 
@@ -225,7 +225,9 @@ def write_start_time(filename, constant):
 
 
 
-
+"""
+Highs / Lows of trand
+"""
 symbol = "BTCUSDT"    # coin's name of current iteration
 interval = '30m'
 name_csv = 'F_BTCUSDT_H.csv'    # name of file with current coin's highs
@@ -235,9 +237,8 @@ numb_iter = 0    # number of current df. only indicator
 
 if interval == '30m':
     add_time_ms = 1800000000    # digit needed for is it the last df before the now time
+
     
-
-
 current_datetime = datetime.now()
 current_timestamp = int(current_datetime.timestamp()) * 1000    # now time
 
@@ -279,10 +280,13 @@ write_start_time(os.path.join(way_to_dir, start_time_file), stop_time)    # writ
 
 
 
+"""
+Increased density of requests
+"""
+pd.set_option('display.max_rows', None)    # settings for max displaying of DF 
+pd.set_option('display.max_columns', None)
 
-    
-
-
+order_book = asyncio.run(get_order_book(api_key, symbol, 1000, True))
 
 
 
