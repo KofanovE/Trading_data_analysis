@@ -58,7 +58,7 @@ async def get_kline_data(api_key, symbol, interval, limit=None, futures=False, s
 
 
 
-async def get_order_book(api_key, symbol, limit, futures=False, start_time=None, end_time=None):
+async def get_order_book(find_time, api_key, symbol, limit, futures=False, start_time=None, end_time=None):
 
     """
     :param api_key: (str) api key of binance account;
@@ -97,17 +97,30 @@ async def get_order_book(api_key, symbol, limit, futures=False, start_time=None,
     #print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
     #print(anomal_bids)
     
-    df_asks = pd.DataFrame(depth['asks'], columns=['high_price', 'quantity_ask'])
+    df_asks = pd.DataFrame(depth['asks'], columns=['price', 'quantity_ask'])
     df_asks = df_asks.astype(float)
+
+    def comparison(quantity):        
+        if quantity >= 100:
+            return 1       
+        elif quantity >= 50:
+            return 2
+        elif quantity > 10:
+            return 3
+
+    df_asks['start_class'] = df_asks['quantity_ask'].apply(comparison)
+    df_asks['find_time'] = find_time
+   
     anomal_asks = df_asks[df_asks['quantity_ask'] > anomal_quantity]
     print(anomal_asks)
     quantity_ask = df_asks['quantity_ask'].sum()
     print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
 
-
+    """
     print(df_asks)
     print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
     print(df_bids)
+    """
     return df_asks, df_bids
 
 
@@ -286,7 +299,7 @@ Increased density of requests
 pd.set_option('display.max_rows', None)    # settings for max displaying of DF 
 pd.set_option('display.max_columns', None)
 
-order_book = asyncio.run(get_order_book(api_key, symbol, 1000, True))
+order_book = asyncio.run(get_order_book(current_timestamp, api_key, symbol, 1000, True))
 
 
 
