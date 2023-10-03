@@ -110,17 +110,19 @@ async def get_order_book(find_time, api_key, symbol, limit, futures=False, start
 
     df_asks['start_class'] = df_asks['quantity_ask'].apply(comparison)
     df_asks['find_time'] = find_time
+    df_asks['now_ask'] = None
+    df_asks['life_time'] = None
    
     anomal_asks = df_asks[df_asks['quantity_ask'] > anomal_quantity]
-    print(anomal_asks)
-    quantity_ask = df_asks['quantity_ask'].sum()
-    print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
+    #print(anomal_asks)
+    #quantity_ask = df_asks['quantity_ask'].sum()
+    #print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
 
-    """
-    print(df_asks)
-    print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
-    print(df_bids)
-    """
+
+    #print(df_asks)
+    #print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\')
+    #print(df_bids)
+
     return df_asks, df_bids
 
 
@@ -299,9 +301,52 @@ Increased density of requests
 pd.set_option('display.max_rows', None)    # settings for max displaying of DF 
 pd.set_option('display.max_columns', None)
 
-order_book = asyncio.run(get_order_book(current_timestamp, api_key, symbol, 1000, True))
+name_ask_csv = 'F_BTCUSDT_ASK.csv'    # name of file with current coin's highs
+full_way_ask = os.path.join(way_to_dir, name_ask_csv)    
+
+if not os.path.isfile(full_way_ask):
+    # if there isn't csv file with high/low -> creating empty df and write it in csv file    
+    df_ask_mem = pd.DataFrame(columns=['price', 'quantity_ask', 'start_class', 'find_time', 'now_ask', 'life_time'])
+    df_ask_mem.to_csv(full_way_ask, index=False)
 
 
+df_asks, df_bids = asyncio.run(get_order_book(current_timestamp, api_key, symbol, 1000, True))
+df_ask_mem = pd.read_csv(full_way_ask)
+
+
+
+if df_ask_mem.shape[0] == 0:
+    df_asks.to_csv(full_way_ask, index=False)
+else:
+    for index, row in df_ask_mem.iterrows():
+        if row['price'] > df_asks.loc[0, 'price']:
+            df_ask_mem.drop(index, inplace=True)
+    merged_df_ask_ = pd.concat([df_ask_mem, df_asks])  # concatenation two order books - new and memoried
+    print(merged_df_ask_)
+    merged_df_ask = merged_df_ask_.groupby('price')
+    
+
+
+
+def old_price(group):
+
+    if len(group) > 1:
+        group.sort_values('find_time')
+        group['life_time'] = group['find_time'].iloc[1] - group['find_time'].iloc[0]
+        group['find_time'] = group['find_time'].iloc[0]
+        group['quantity_ask'] = group['quantity_ask'].iloc[0]
+        group['start_class'] = group['start_class'].iloc[0]
+        group['now_ask'] = group['now_ask'].iloc[1]
+    return group
+        
+new_df_ask = merged_df_ask.apply(old_price).reset_index(drop=True)
+new_df_ask.to_csv(full_way_ask, index=False)
+    
+
+
+
+
+    
 
 
 
